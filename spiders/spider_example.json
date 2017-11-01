@@ -1,0 +1,39 @@
+{
+  "id": "01N004",
+  "desc": "蘑菇街商品信息爬虫",
+  "enableProxy": false,
+  "seedUrl": "http://shop.mogujie.com/detail/${businesscode}?",
+  "pages": [
+    {
+      "fields": [
+        {
+          "name": "product_displayname",
+          "desc": "显示名称",
+          "selector": "#J_GoodsInfo > div > h1 > span",
+          "transfer": "",
+          "repeated": false,
+          "isVar": false
+        },
+        {
+          "name": "product_price",
+          "desc": "商品价格",
+          "selector": "#J_NowPrice",
+          "transfer": "",
+          "repeated": false,
+          "isVar": false
+        },
+        {
+          "name": "product_shopname",
+          "desc": "店铺名称",
+          "selector": "#J_ModuleShop > div > h3 > div > a",
+          "transfer": "",
+          "repeated": false,
+          "isVar": false
+        }
+      ],
+      "primaryKey": "${extract(${url}, http://shop.mogujie.com/detail/([A-Za-z0-9]+)?,)}",
+      "outputUrlFilter": "",
+      "customOutputUrls": ""
+    }
+  ]
+}

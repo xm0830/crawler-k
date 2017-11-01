@@ -1,0 +1,29 @@
+{
+  "id": "",
+  "desc": "",
+  "seedUrl": "",
+  "enableProxy": false,
+  "pages": [
+    {
+      "props": [
+        {
+          "name": "",
+          "value": ""
+        }
+      ],
+      "fields": [
+        {
+          "name": "",
+          "desc": "",
+          "selector": "",
+          "transfer": "",
+          "repeated": false,
+          "isVar": false
+        }
+      ],
+      "primaryKey": "",
+      "outputUrlFilter": "",
+      "customOutputUrls": ""
+    }
+  ]
+}
