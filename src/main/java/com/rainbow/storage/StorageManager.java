@@ -57,6 +57,12 @@ public class StorageManager {
                     storages.add(hbaseStorage);
 
                     break;
+                case "db":
+                    DBStorage dbStorage = new DBStorage(config.value);
+                    dbStorage.init();
+                    storages.add(dbStorage);
+
+                    break;
 
                 case "console":
                     ConsoleStorage consoleStorage = new ConsoleStorage(config.value);
