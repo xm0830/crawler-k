@@ -6,8 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by xuming on 2017/10/12.
@@ -17,12 +20,18 @@ public class StorageManager {
 
     private List<BaseStorage> storages = new ArrayList<>();
 
+    private static Map<String, Class<? extends BaseStorage>> globalClass = new HashMap<>();
+
     private StorageManager() { }
 
     public static StorageManager create(List<SetupConfig.StorageConfig> configs) throws IOException {
         StorageManager manager = new StorageManager();
         manager.init(configs);
         return manager;
+    }
+
+    public static void registExtStorage(String type, Class<? extends BaseStorage> storageClass) {
+        globalClass.put(type, storageClass);
     }
 
     public void save(DataFrame df,  String rowKey) throws IOException {
@@ -38,6 +47,7 @@ public class StorageManager {
     }
 
     private void init(List<SetupConfig.StorageConfig> configs) throws IOException {
+
         for (SetupConfig.StorageConfig config : configs) {
             logger.debug("storage type: {}, storage value: {}", config.type, config.value);
             switch (config.type) {
@@ -52,6 +62,24 @@ public class StorageManager {
                     ConsoleStorage consoleStorage = new ConsoleStorage(config.value);
                     consoleStorage.init();
                     storages.add(consoleStorage);
+
+                    break;
+
+                default:
+                    if (globalClass.containsKey(config.type)) {
+                        Class<? extends BaseStorage> clazz = globalClass.get(config.type);
+                        try {
+                            Constructor<? extends BaseStorage> constructor = clazz.getDeclaredConstructor(String.class);
+                            BaseStorage baseStorage = constructor.newInstance(config.value);
+                            baseStorage.init();
+
+                            storages.add(baseStorage);
+                        } catch (NoSuchMethodException e) {
+                            logger.error("constructor of {} only support one String parameter!", clazz.getName(), e);
+                        } catch (Exception e) {
+                            logger.error("new instance for {} error!", clazz.getName());
+                        }
+                    }
 
                     break;
             }

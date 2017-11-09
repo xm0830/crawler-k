@@ -72,7 +72,7 @@ public class SetupConfig {
         SetupConfig setupConfig = new SetupConfig();
 
         String tmpDir = System.getProperty("java.io.tmpdir");
-        String dataDir = tmpDir + "/pxene-crawler";
+        String dataDir = tmpDir + "/crawler-k";
 
         logger.info("dataDir: " + dataDir);
         setupConfig.dataDir = dataDir;
