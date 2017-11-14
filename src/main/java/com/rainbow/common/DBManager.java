@@ -19,7 +19,7 @@ public class DBManager {
         try {
             Class.forName(driver);
         } catch (ClassNotFoundException e) {
-            logger.error("load mysql Driver error!", e);
+            logger.error("load db Driver error!", e);
         }
         connection = DriverManager.getConnection(url, name, password);
     }
