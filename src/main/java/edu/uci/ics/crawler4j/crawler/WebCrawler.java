@@ -389,7 +389,7 @@ public class WebCrawler implements Runnable {
                         int newDocId = docIdServer.getDocId(movedToUrl);
                         if (newDocId > 0) {
                             logger.debug("Redirect page: {} is already seen", curURL);
-                            return;
+                            // return;
                         }
 
                         WebURL webURL = new WebURL();
