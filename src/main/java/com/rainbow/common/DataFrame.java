@@ -35,8 +35,8 @@ public class DataFrame {
                 row.set(index, value);
             } else {
                 schema.add(name);
-                for (ArrayList<String> data : data) {
-                    data.add(null);
+                for (ArrayList<String> tmp : data) {
+                    tmp.add(null);
                 }
 
                 row.add(value);
