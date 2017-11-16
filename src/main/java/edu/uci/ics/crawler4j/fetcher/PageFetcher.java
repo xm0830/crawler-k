@@ -104,7 +104,10 @@ public class PageFetcher extends Configurable {
         try {
             request = newHttpUriRequest(toFetchURL);
             String parentUrl = webUrl.getParentUrl();
-            request.addHeader("Referer", StringUtils.isBlank(parentUrl) ? "www.baidu.com" : parentUrl);
+            if (StringUtils.isNotBlank(parentUrl)) {
+                request.addHeader("Referer", parentUrl);
+            }
+
             // Applying Politeness delay
             synchronized (mutex) {
                 long now = (new Date()).getTime();
@@ -176,8 +179,10 @@ public class PageFetcher extends Configurable {
     }
 
     public synchronized void shutDown() {
-        if (connectionMonitorThread != null) {
+        if (connectionManager != null) {
             connectionManager.shutdown();
+        }
+        if (connectionMonitorThread != null) {
             connectionMonitorThread.shutdown();
         }
     }

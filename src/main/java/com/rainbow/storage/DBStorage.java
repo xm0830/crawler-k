@@ -62,7 +62,7 @@ public class DBStorage extends BaseStorage {
                         List<String> row = dataFrame.getRow(i);
                         for (int i1 = 0; i1 < row.size(); i1++) {
                             String name = dataFrame.getColumnNames().get(i1);
-                            String value = row.get(i1);
+                            String value = row.get(i1).replaceAll("'", "''");
 
                             map.put(name, value);
                         }

@@ -5,6 +5,7 @@ import edu.uci.ics.crawler4j.crawler.authentication.AuthInfo;
 import edu.uci.ics.crawler4j.crawler.authentication.BasicAuthInfo;
 import edu.uci.ics.crawler4j.crawler.authentication.FormAuthInfo;
 import edu.uci.ics.crawler4j.crawler.authentication.NtAuthInfo;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
@@ -18,6 +19,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.config.SocketConfig;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -54,13 +56,35 @@ public class ProxyHttpClient {
     }
 
     public String get(String url, String referer) throws IOException {
-        buildHttpClient();
-        return HttpUtil.get(httpClientTL.get(), url, referer);
+        int count = 0;
+        IOException exception = null;
+        while (count++ <= 5) {
+            try {
+                buildHttpClient();
+                return HttpUtil.get(httpClientTL.get(), url, referer);
+            } catch (IOException e) {
+                logger.warn("current try times: {}", count);
+                exception = e;
+            }
+        }
+
+        throw exception;
     }
 
     public CloseableHttpResponse execute(HttpUriRequest request) throws IOException {
-        buildHttpClient();
-        return httpClientTL.get().execute(request);
+        int count = 0;
+        IOException exception = null;
+        while (count++ <= 5) {
+            try {
+                buildHttpClient();
+                return httpClientTL.get().execute(request);
+            } catch (IOException e) {
+                logger.warn("current try times: {}", count);
+                exception = e;
+            }
+        }
+
+        throw exception;
     }
 
     private void buildHttpClient() throws IOException {
@@ -72,12 +96,17 @@ public class ProxyHttpClient {
                     .setRedirectsEnabled(false)
                     .setSocketTimeout(config.getSocketTimeout())
                     .setConnectTimeout(config.getConnectionTimeout())
+                    .setConnectionRequestTimeout(config.getConnectionTimeout())
                     .build();
+
+            SocketConfig socketConfig = SocketConfig.custom().setSoTimeout(config.getSocketTimeout()).build();
 
             httpClientBuilder = HttpClientBuilder.create();
             httpClientBuilder.setDefaultRequestConfig(requestConfig);
             httpClientBuilder.setUserAgent(config.getUserAgentString());
             httpClientBuilder.setDefaultHeaders(config.getDefaultHeaders());
+            httpClientBuilder.setConnectionManagerShared(true);
+            httpClientBuilder.setDefaultSocketConfig(socketConfig);
 
             if (connectionManager != null) {
                 httpClientBuilder.setConnectionManager(connectionManager);
@@ -86,7 +115,7 @@ public class ProxyHttpClient {
             httpClientBuilderTL.set(httpClientBuilder);
         }
 
-        if (config.getProxyHost() != null) {
+        if (StringUtils.isNotBlank(config.getProxyHost())) {
             // 设置了代理
             String str = HttpUtil.get(config.getProxyHost());
             String[] split = str.split(":", -1);

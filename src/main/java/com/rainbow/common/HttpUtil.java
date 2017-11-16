@@ -6,6 +6,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.config.SocketConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
@@ -24,10 +25,16 @@ public class HttpUtil {
                 .setExpectContinueEnabled(false)
                 .setCookieSpec(CookieSpecs.STANDARD)
                 .setRedirectsEnabled(false)
+                .setSocketTimeout(30000)
+                .setConnectTimeout(30000)
+                .setConnectionRequestTimeout(30000)
                 .build();
+
+        SocketConfig socketConfig = SocketConfig.custom().setSoTimeout(30000).build();
 
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
         clientBuilder.setDefaultRequestConfig(requestConfig);
+        clientBuilder.setDefaultSocketConfig(socketConfig);
         clientBuilder.setUserAgent("Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36");
 
         httpClient = clientBuilder.build();
