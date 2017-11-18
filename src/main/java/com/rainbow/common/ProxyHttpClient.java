@@ -17,6 +17,7 @@ import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.config.SocketConfig;
@@ -46,6 +47,7 @@ public class ProxyHttpClient {
     private ThreadLocal<HttpClientBuilder> httpClientBuilderTL = new ThreadLocal<>();
     private ThreadLocal<CloseableHttpClient> httpClientTL = new ThreadLocal<>();
     private ThreadLocal<String> lastProxyHostTL = new ThreadLocal<>();
+    private ThreadLocal<HttpExecutor> httpExecutorTL = new ThreadLocal<>();
 
     private CrawlConfig config = null;
     private PoolingHttpClientConnectionManager connectionManager = null;
@@ -56,35 +58,53 @@ public class ProxyHttpClient {
     }
 
     public String get(String url, String referer) throws IOException {
+        HttpExecutor httpExecutor = getHttpExecutor();
+
         int count = 0;
-        IOException exception = null;
-        while (count++ <= 5) {
-            try {
-                buildHttpClient();
-                return HttpUtil.get(httpClientTL.get(), url, referer);
-            } catch (IOException e) {
+        while (count++ < 5) {
+            String resp = HttpUtil.get(httpExecutor, url, referer);
+            if (resp != null) {
+                return resp;
+            } else {
                 logger.warn("current try times: {}", count);
-                exception = e;
             }
         }
 
-        throw exception;
+        throw new RuntimeException("execute http request failed more than 5 times!");
     }
 
-    public CloseableHttpResponse execute(HttpUriRequest request) throws IOException {
+    public CloseableHttpResponse execute(HttpUriRequest request) {
+        HttpExecutor httpExecutor = getHttpExecutor();
+
         int count = 0;
-        IOException exception = null;
-        while (count++ <= 5) {
-            try {
-                buildHttpClient();
-                return httpClientTL.get().execute(request);
-            } catch (IOException e) {
+        while (count++ < 5) {
+            CloseableHttpResponse resp = httpExecutor.execute(request);
+            if (resp != null) {
+                return resp;
+            } else {
                 logger.warn("current try times: {}", count);
-                exception = e;
             }
         }
 
-        throw exception;
+        throw new RuntimeException("execute http request failed more than 5 times!");
+    }
+
+    private HttpExecutor getHttpExecutor() {
+        HttpExecutor httpExecutor = httpExecutorTL.get();
+        if (httpExecutor == null) {
+            httpExecutor =  new HttpExecutor(config.getSocketTimeout());
+            httpExecutor.start();
+
+            httpExecutorTL.set(httpExecutor);
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return httpExecutor;
     }
 
     private void buildHttpClient() throws IOException {
@@ -180,9 +200,15 @@ public class ProxyHttpClient {
             httpClient.close();
         }
 
+        HttpExecutor httpExecutor = httpExecutorTL.get();
+        if (httpExecutor != null) {
+            httpExecutor.close();
+        }
+
         httpClientTL.remove();
         httpClientBuilderTL.remove();
         lastProxyHostTL.remove();
+        httpExecutorTL.remove();
     }
 
     private void doAuthetication(List<AuthInfo> authInfos) throws IOException {
@@ -280,6 +306,72 @@ public class ProxyHttpClient {
         } catch (IOException e) {
             logger.error(
                     "While trying to login to: " + authInfo.getHost() + " - Error making request", e);
+        }
+    }
+
+    public class HttpExecutor extends Thread {
+
+        private HttpUriRequest request = null;
+        private CloseableHttpResponse response = null;
+        private boolean isStop = false;
+        private int timeout = 0;
+
+        public HttpExecutor(int timeout) {
+            this.timeout = timeout;
+            this.setName("HttpExecutorThread");
+        }
+
+        public CloseableHttpResponse execute(HttpUriRequest request) {
+            this.request = request;
+
+            synchronized (this) {
+                notifyAll();
+                try {
+                    wait(timeout);
+                } catch (InterruptedException e) {
+                    logger.warn("read time out, begin to interrupt!");
+                    interrupt();
+                }
+            }
+
+            return response;
+        }
+
+        public void close() {
+            isStop = true;
+            interrupt();
+            while (isAlive()) {
+                try {
+                    Thread.sleep(2 * 1000);
+                } catch (InterruptedException e) {
+                    logger.warn("exception happened!", e);
+                }
+            }
+        }
+
+        @Override
+        public void run() {
+            while (!isStop) {
+                synchronized (this) {
+                    try {
+                        wait();
+                        response = null;
+                    } catch (InterruptedException e) {
+                        continue;
+                    }
+                }
+
+                try {
+                    buildHttpClient();
+                    response = httpClientTL.get().execute(request);
+                } catch (IOException e) {
+                    logger.warn("exception happened!", e);
+                }
+
+                synchronized (this) {
+                    notifyAll();
+                }
+            }
         }
     }
 }

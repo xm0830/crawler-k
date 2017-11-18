@@ -41,24 +41,39 @@ public class HttpUtil {
     }
 
     public static String get(String url) {
-        return get(httpClient, url, null);
+        HttpUriRequest request = new HttpGet(url);
+
+        try {
+            CloseableHttpResponse response = httpClient.execute(request);
+            return consumeResp(response);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return "";
     }
 
-    public static String get(CloseableHttpClient httpClient, String url, String referer) {
+    public static String get(ProxyHttpClient.HttpExecutor httpExecutor, String url, String referer) {
         HttpUriRequest request = new HttpGet(url);
         if (StringUtils.isNotBlank(referer)) {
             request.setHeader("Referer", referer);
         }
 
         try {
-            CloseableHttpResponse response = httpClient.execute(request);
-            int statusCode = response.getStatusLine().getStatusCode();
-
-            if (statusCode == 200) {
-                return EntityUtils.toString(response.getEntity());
-            }
+            CloseableHttpResponse response = httpExecutor.execute(request);
+            return consumeResp(response);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        return "";
+    }
+
+    private static String consumeResp(CloseableHttpResponse response) throws IOException {
+        int statusCode = response.getStatusLine().getStatusCode();
+
+        if (statusCode == 200) {
+            return EntityUtils.toString(response.getEntity());
         }
 
         return "";

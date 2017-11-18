@@ -334,6 +334,7 @@ public class CrawlController extends Configurable {
                 }
             });
 
+            monitorThread.setName("MonitorThread");
             monitorThread.start();
 
             if (isBlocking) {
